@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阿瓦隆游戏助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", serif;
+        }
+        :root {
+            --gold: #d4af37;
+            --red: #c8102e;
+            --deep-red: #8b0000;
+            --bg-dark: #1a0f0f;
+            --card-bg: #221010;
+            --card-border: #3a1818;
+            --text-main: #f0e6d6;
+            --text-sub: #b8a990;
+        }
+        body {
+            background: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            transition: background 0.8s ease, color 0.8s ease;
+            position: relative;
+            overflow-x: hidden;
+        }
+        /* 右上角全局搜索 */
+        .search-box {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 999;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .search-box input {
+            padding: 0.5rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--gold);
+            background: var(--card-bg);
+            color: var(--text-main);
+            outline: none;
+            width: 180px;
+            font-size: 0.9rem;
+        }
+        .search-box button {
+            padding: 0.5rem 1rem;
+            background: var(--gold);
+            color: #1a0f0f;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+        .search-box button:hover {
+            opacity: 0.9;
+        }
+        .search-result {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            width: 340px;
+            background: var(--card-bg);
+            border: 1px solid var(--gold);
+            border-radius: 8px;
+            padding: 1rem;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .search-result.show {
+            display: block;
+        }
+        .search-result h4 {
+            color: var(--gold);
+            margin-bottom: 0.8rem;
+            border-bottom: 1px solid rgba(212,175,55,0.3);
+            padding-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        .search-result p {
+            line-height: 1.6;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            margin: 0.4rem 0;
+        }
+        .search-result a {
+            color: var(--red);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        /* 全屏红色闪烁遮罩 */
+        .red-flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 0, 0, 0);
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .red-flash.active {
+            animation: fullRedFlash 0.3s ease-in-out 5;
+        }
+        @keyframes fullRedFlash {
+            0%, 100% { background: rgba(255, 0, 0, 0); }
+            50% { background: rgba(255, 0, 0, 0.4); }
+        }
+        /* 全屏HELP文字组 */
+        .fullscreen-help {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10000;
+            display: none;
+        }
+        .fullscreen-help.active {
+            display: block;
+            animation: helpGroupBlink 0.25s ease-in-out 5;
+        }
+        .help-main {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16rem;
+            font-weight: 900;
+            color: #ff0000;
+            letter-spacing: 40px;
+            user-select: none;
+        }
+        .help-sub {
+            position: absolute;
+            font-weight: 900;
+            color: #ff0000;
+            user-select: none;
+        }
+        .help-1 { top: 10%; left: 8%; font-size: 4rem; }
+        .help-2 { top: 20%; right: 12%; font-size: 5rem; }
+        .help-3 { bottom: 18%; left: 15%; font-size: 3.5rem; }
+        .help-4 { bottom: 25%; right: 8%; font-size: 4.5rem; }
+        @keyframes helpGroupBlink {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        @media (max-width: 768px) {
+            .help-main {
+                font-size: 6rem;
+                letter-spacing: 15px;
+            }
+            .help-sub {
+                font-size: 2rem !important;
+            }
+            .search-box input {
+                width: 120px;
+            }
+        }
+        /* 顶部导航（内页显示） */
+        .header {
+            background: var(--card-bg);
+            padding: 1.2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: background 0.8s ease;
+            display: none;
+            border-bottom: 2px solid var(--gold);
+        }
+        .header.show {
+            display: block;
+        }
+        .header h1 {
+            color: var(--gold);
+            margin-bottom: 0.8rem;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+        }
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+        .nav button {
+            padding: 0.8rem 2rem;
+            background: var(--card-border);
+            color: var(--text-main);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+        .nav button.active, .nav button:hover {
+            background: var(--red);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        /* 欢迎首页（无导航） */
+        .welcome-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1rem;
+            background: radial-gradient(ellipse at center, #2a1515 0%, var(--bg-dark) 70%);
+        }
+        .welcome-title {
+            font-size: 3.5rem;
+            color: var(--gold);
+            letter-spacing: 12px;
+            margin-bottom: 0.5rem;
+            font-weight: normal;
+        }
+        .welcome-subtitle {
+            color: var(--text-sub);
+            font-size: 1.1rem;
+            margin-bottom: 4rem;
+            letter-spacing: 6px;
+        }
+        .welcome-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            max-width: 1200px;
+            width: 100%;
+        }
+        @media (max-width: 900px) {
+            .welcome-cards {
+                grid-template-columns: 1fr;
+                max-width: 500px;
+            }
+            .welcome-title {
+                font-size: 2rem;
+                letter-spacing: 6px;
+            }
+        }
+        .welcome-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            border-top: 6px solid var(--gold);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        .welcome-card:nth-child(2) {
+            border-top-color: #fff;
+        }
+        .welcome-card:nth-child(3) {
+            border-top-color: var(--red);
+        }
+        .welcome-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 32px rgba(212, 175, 55, 0.2);
+        }
+        .welcome-card h2 {
+            font-size: 1.6rem;
+            margin-bottom: 1.2rem;
+            color: var(--gold);
+        }
+        .welcome-card:nth-child(2) h2 {
+            color: #fff;
+        }
+        .welcome-card:nth-child(3) h2 {
+            color: var(--red);
+        }
+        .welcome-card p {
+            color: var(--text-sub);
+            line-height: 1.8;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        .welcome-card .enter-btn {
+            display: inline-block;
+            padding: 0.9rem 2.2rem;
+            background: var(--gold);
+            color: #1a0f0f;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: 0.2s;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .welcome-card:nth-child(2) .enter-btn {
+            background: #fff;
+            color: #1a0f0f;
+        }
+        .welcome-card:nth-child(3) .enter-btn {
+            background: var(--red);
+            color: #fff;
+        }
+        .welcome-card .enter-btn:hover {
+            opacity: 0.85;
+        }
+        /* 内页内容区域 */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            display: none;
+        }
+        .container.show {
+            display: block;
+        }
+        .page {
+            display: none;
+            animation: fade 0.5s;
+        }
+        .page.active {
+            display: block;
+        }
+        @keyframes fade {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        /* 卡片通用 */
+        .card {
+            background: var(--card-bg);
+            padding: 1.8rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: background 0.8s ease, box-shadow 0.8s ease;
+            border: 1px solid rgba(212, 175, 55, 0.15);
+        }
+        .card h3 {
+            color: var(--gold);
+            margin-bottom: 1.2rem;
+            border-left: 4px solid var(--red);
+            padding-left: 0.8rem;
+            font-size: 1.3rem;
+        }
+        .card p {
+            line-height: 1.7;
+            margin: 0.5rem 0;
+            color: var(--text-main);
+        }
+        /* 角色列表 */
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .role-item {
+            border-left: 4px solid var(--gold);
+            padding-left: 1rem;
+            padding-block: 0.5rem;
+        }
+        .role-item.evil {
+            border-left-color: var(--red);
+        }
+        /* 功能按钮 */
+        .tool-btn {
+            padding: 0.8rem 1.5rem;
+            background: var(--gold);
+            color: #1a0f0f;
+            border: none;
+            border-radius: 8px;
+            margin: 0.5rem;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .tool-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .tool-btn.red {
+            background: var(--red);
+            color: #fff;
+        }
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--card-border);
+            border-radius: 8px;
+        }
+        /* 任务圆点 */
+        .task-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .task-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #666;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .task-dot.success {
+            background: var(--gold);
+            box-shadow: 0 0 8px var(--gold);
+        }
+        .task-dot.fail {
+            background: var(--red);
+            box-shadow: 0 0 8px var(--red);
+        }
+        /* 线上对局样式 */
+        .game-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 768px) {
+            .game-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        .player-item {
+            padding: 0.8rem;
+            background: var(--card-border);
+            border-radius: 8px;
+            border-left: 3px solid #666;
+            font-size: 0.9rem;
+            transition: all 0.6s ease;
+        }
+        .player-item.you {
+            border-left-color: var(--gold);
+            background: #3a2a10;
+        }
+        .player-item.leader {
+            border-left-color: var(--gold);
+        }
+        .player-item.dead {
+            border-left-color: #ff0000 !important;
+            color: #ff4444;
+            opacity: 0.85;
+        }
+        .player-item.dead .player-name::after {
+            content: " [阵亡]";
+            color: #ff0000;
+            font-size: 0.8rem;
+            margin-left: 4px;
+        }
+        .player-name {
+            font-weight: bold;
+            margin-bottom: 0.2rem;
+        }
+        .player-role {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+        }
+        .game-status {
+            padding: 0.8rem 1rem;
+            background: var(--card-border);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            transition: background 0.8s ease;
+        }
+        .game-status span {
+            color: var(--gold);
+            font-weight: bold;
+        }
+        .chat-box {
+            height: 420px;
+            overflow-y: auto;
+            background: #0f0808;
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: background 0.8s ease;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            cursor: pointer;
+        }
+        .chat-msg {
+            max-width: 80%;
+            padding: 0.6rem 0.9rem;
+            border-radius: 10px;
+            line-height: 1.5;
+            font-size: 0.92rem;
+            transition: background 0.6s ease, color 0.6s ease;
+        }
+        .chat-msg.system {
+            align-self: center;
+            background: #2a1515;
+            color: var(--text-sub);
+            font-size: 0.85rem;
+            text-align: center;
+            max-width: 90%;
+        }
+        .chat-msg.other {
+            align-self: flex-start;
+            background: var(--card-border);
+            border-bottom-left-radius: 2px;
+        }
+        .chat-msg.you {
+            align-self: flex-end;
+            background: #4a3515;
+            border-bottom-right-radius: 2px;
+        }
+        .chat-name {
+            font-size: 0.75rem;
+            color: var(--gold);
+            margin-bottom: 0.2rem;
+        }
+        .chat-msg.you .chat-name {
+            text-align: right;
+            color: var(--gold);
+        }
+        /* 聊天输入区 */
+        .chat-input-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 0.8rem;
+            border-radius: 8px;
+            border: none;
+            background: var(--card-border);
+            color: var(--text-main);
+            outline: none;
+            font-size: 0.95rem;
+        }
+        .start-panel {
+            text-align: center;
+            padding: 5rem 1rem;
+        }
+        .start-panel h3 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: var(--gold);
+            letter-spacing: 3px;
+        }
+
+        /* ———— 搜索结果页样式 ———— */
+        .search-entry {
+            padding: 1.2rem;
+            background: var(--card-border);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--gold);
+        }
+        .search-entry:hover {
+            background: rgba(212, 175, 55, 0.12);
+            transform: translateX(6px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .search-entry h4 {
+            color: var(--gold);
+            margin-bottom: 0.6rem;
+            font-size: 1.15rem;
+        }
+        .search-entry p {
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .no-result {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: var(--text-sub);
+            line-height: 1.8;
+        }
+        .no-result strong {
+            color: var(--red);
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <!-- 右上角全局搜索 -->
+    <div class="search-box">
+        <input type="text" id="globalSearch" placeholder="搜索...">
+        <button onclick="doSearch()">搜索</button>
+        <div id="searchResult" class="search-result"></div>
+    </div>
+    <!-- 全屏闪红遮罩 -->
+    <div class="red-flash" id="redFlash"></div>
+    <!-- 全屏HELP文字组 -->
+    <div class="fullscreen-help" id="fullHelp">
+        <span class="help-main">HELP</span>
+        <span class="help-sub help-1">HELP</span>
+        <span class="help-sub help-2">HELP</span>
+        <span class="help-sub help-3">HELP</span>
+        <span class="help-sub help-4">HELP</span>
+    </div>
+    <!-- 顶部导航（内页显示） -->
+    <div class="header" id="mainHeader">
+        <h1>阿瓦隆游戏助手</h1>
+        <div class="nav">
+            <button data-page="intro">游戏介绍</button>
+            <button data-page="offline">线下助手</button>
+            <button data-page="game">线上游玩</button>
+        </div>
+    </div>
+    <!-- 欢迎首页（无导航） -->
+    <div class="welcome-page" id="welcomePage">
+        <h1 class="welcome-title">阿瓦隆游戏助手</h1>
+        <p class="welcome-subtitle">Fallride Mystery</p>
+        <div class="welcome-cards">
+            <div class="welcome-card">
+                <h2>📖 游戏介绍</h2>
+                <p>完整收录阵营身份、圆桌法则、人数建制<br>新手快速入门，老手随时查阅<br>沉浸式世界观设定，还原阿瓦隆史诗氛围</p>
+                <button class="enter-btn" onclick="enterInnerPage('intro')">进入查阅</button>
+            </div>
+            <div class="welcome-card">
+                <h2>⚙️ 线下助手</h2>
+                <p>线下聚会开桌专用工具<br>组队表决记录、五轮征途标记<br>无需纸笔，手机即可全程记录对局</p>
+                <button class="enter-btn" onclick="enterInnerPage('offline')">进入工具</button>
+            </div>
+            <div class="welcome-card">
+                <h2>🎮 线上游玩</h2>
+                <p>全角色独立人格发言<br>沉浸式剧情体验</p>
+                <button class="enter-btn" onclick="enterInnerPage('game')">进入对局</button>
+            </div>
+        </div>
+    </div>
+    <!-- 内页内容容器 -->
+    <div class="container" id="innerContainer">
+        <!-- 第一页：游戏介绍 -->
+        <div class="page" id="intro">
+            <div class="card">
+                <h3>阵营与身份</h3>
+                <div class="role-grid">
+                    <div class="role-item"><strong>梅林</strong>：先知，窥见所有暗影行者，唯莫德雷德不在其视野中。需隐晦引导忠臣，不可暴露身份。</div>
+                    <div class="role-item"><strong>派西维尔</strong>：先知守护者，能看见两枚先知印记，却无法分辨正邪真伪，是正义阵营的枢纽。</div>
+                    <div class="role-item"><strong>圆桌忠臣</strong>：亚瑟王的骑士，无特殊视野，以言辞与行动辨明正邪，护佑阿瓦隆。</div>
+                    <div class="role-item evil"><strong>莫甘娜</strong>：暗影女王，伪造先知印记迷惑派西维尔，是邪恶阵营的先锋。</div>
+                    <div class="role-item evil"><strong>刺客</strong>：暗影利刃，正义三胜后可刺杀梅林，命中则暗影倾覆阿瓦隆。</div>
+                    <div class="role-item evil"><strong>奥伯伦</strong>：孤影行者，与其余暗影互不相识，潜伏深处伺机破坏。</div>
+                    <div class="role-item evil"><strong>莫德雷德</strong>：暗影之主，对梅林完全隐身，是邪恶阵营最深的暗桩。</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>圆桌法则</h3>
+                <p><strong>核心使命：</strong>正义阵营完成三次征途，护佑阿瓦隆；邪恶阵营破坏三次征途，倾覆王座。正义三胜后，刺客将发动刺杀，命中则暗影逆转胜负。</p>
+                <p><strong>议事流程：</strong></p>
+                <p>1. 徽章分发，各自身份唯有自己知晓，对应身份获得专属视野</p>
+                <p>2. 按序轮值领队，挑选指定人数的骑士组成远征小队</p>
+                <p>3. 全体举手表决，过半同意则小队出征，否则轮换领队</p>
+                <p>4. 远征小队秘密交付信物，唯有暗影可交付污浊信物破坏征途</p>
+                <p>5. 累计三次成功或失败后结算，正义三胜则触发刺杀终局</p>
+                <p><strong>铁则：</strong>连续五次组队被否决，暗影直接获胜；七人及以上第四次征途，需两份污浊信物才算溃败。</p>
+            </div>
+            <div class="card">
+                <h3>人数建制</h3>
+                <button class="tool-btn" onclick="showConfig(5)">5人议会</button>
+                <button class="tool-btn" onclick="showConfig(6)">6人议会</button>
+                <button class="tool-btn" onclick="showConfig(7)">7人议会</button>
+                <button class="tool-btn" onclick="showConfig(8)">8人议会</button>
+                <button class="tool-btn" onclick="showConfig(9)">9人议会</button>
+                <button class="tool-btn" onclick="showConfig(10)">10人议会</button>
+                <div class="result" id="configResult">
+                    <p>点击上方按钮查看对应人数的标准身份建制</p>
+                </div>
+            </div>
+        </div>
+        <!-- 第二页：线下助手 -->
+        <div class="page" id="offline">
+            <div class="card">
+                <h3>组队表决记录</h3>
+                <p>线下议事时记录每一轮队伍表决结果，便于复盘推演</p>
+                <button class="tool-btn" onclick="addVote('✅ 队伍通行')">✅ 通过</button>
+                <button class="tool-btn red" onclick="addVote('❌ 队伍驳回')">❌ 否决</button>
+                <button class="tool-btn" onclick="clearVote()">清空全部记录</button>
+                <div class="result" id="voteResult">
+                    <p>表决记录列表：</p>
+                </div>
+            </div>
+            <div class="card">
+                <h3>五轮征途标记</h3>
+                <p>点击圆点切换征途胜负状态，直观展示当前战局</p>
+                <div class="task-row">
+                    <div class="task-dot" onclick="toggleTask(this)"></div>
+                    <div class="task-dot" onclick="toggleTask(this)"></div>
+                    <div class="task-dot" onclick="toggleTask(this)"></div>
+                    <div class="task-dot" onclick="toggleTask(this)"></div>
+                    <div class="task-dot" onclick="toggleTask(this)"></div>
+                </div>
+                <button class="tool-btn" onclick="resetTask()">重置所有征途</button>
+            </div>
+            <div class="card">
+                <h3>各人数远征小队建制</h3>
+                <p>5人议会：2 / 3 / 2 / 3 / 3</p>
+                <p>6人议会：2 / 3 / 4 / 3 / 4</p>
+                <p>7人议会：2 / 3 / 3 / 4* / 4</p>
+                <p>8-10人议会：3 / 4 / 4 / 5* / 5</p>
+                <p style="color:#c8102e; margin-top: 0.5rem;">* 标记为第四次特殊征途，需两份污浊信物才算溃败</p>
+            </div>
+        </div>
+        <!-- 第三页：线上游玩 -->
+        <div class="page" id="game">
+            <div class="card start-panel" id="startPanel">
+                <h3>线上游玩</h3>
+                <p>踏入阿瓦隆的迷雾，见证正邪的博弈</p>
+                <button class="tool-btn" onclick="startGame()" style="margin-top: 2rem; font-size: 1.1rem; padding: 1rem 2.8rem;">开始对局</button>
+            </div>
+            <div id="gameMain" style="display:none;">
+                <div class="game-status">
+                    <div>当前阶段：<span id="phaseText">身份确认</span></div>
+                    <div>征途进度：<span id="taskProgress">0成 / 0败</span></div>
+                    <div>当前领队：<span id="leaderText">-</span></div>
+                    <div>否决累计：<span id="rejectCount">0</span>/5</div>
+                </div>
+                <div class="game-layout">
+                    <div class="card">
+                        <h3>圆桌骑士</h3>
+                        <div class="player-list" id="playerList"></div>
+                    </div>
+                    <div>
+                        <div class="chat-box" id="chatBox">
+                            <div class="chat-msg system">迷雾笼罩阿瓦隆，圆桌骑士齐聚议事厅...</div>
+                            <div class="chat-msg system" style="font-size:0.75rem; opacity:0.6;">点击对话框可跳过等待</div>
+                        </div>
+                        <div class="chat-input-bar" id="chatInputBar" style="display:none;">
+                            <input type="text" class="chat-input" id="playerInput" placeholder="输入你想说的话...">
+                            <button class="tool-btn" onclick="sendPlayerReply()">发送</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 搜索结果页 -->
+        <div class="page" id="searchPage">
+            <div class="card">
+                <h3>搜索结果</h3>
+                <div id="searchPageContent"></div>
+            </div>
+        </div>
+        <!-- 堕骑推理馆详情页 -->
+        <div class="page" id="duoqiPage">
+            <div class="card">
+                <h3>场馆简介</h3>
+                <p>堕骑推理馆坐落于城市旧巷深处，是一家以中世纪骑士文化为核心主题的沉浸式桌游推理馆。店内整体采用复古古堡风格装修，搭配烛火、铠甲、圆桌等元素，为玩家营造身临其境的史诗级博弈氛围。</p>
+                <p><strong>营业时间：</strong>每日 11:00 - 次日 02:00</p>
+                <p><strong>主营项目：</strong>阿瓦隆、狼人杀、原创悬疑剧本杀、各类策略桌面卡牌游戏</p>
+                <p><strong>配套服务：</strong>提供精酿饮品、西式简餐与特色甜品，所有场次均配有专业DM全程带场，新手友好。</p>
+                <p><strong>官方网站：</strong><a href="https://wr31483099-1.jzfkw.net/#route=%2F&device=pc&preview=pc" target="_blank">Fallride Mystery</a></p>
+            </div>
+            <div class="card">
+                <h3>关于本工具</h3>
+                <p>阿瓦隆游戏助手为<strong>堕骑推理馆专属定制开发的店内专用工具</strong>，涵盖规则查阅、线下对局记录、沉浸式线上剧情体验三大模块，用于辅助到店玩家快速上手游戏、提升对局流畅度与沉浸感。</p>
+                <p>本工具仅用于堕骑推理馆店内娱乐体验，禁止商用转载与二次分发。</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        // ========== 全局搜索功能 ==========
+        function doSearch() {
+            const input = document.getElementById('globalSearch');
+            const result = document.getElementById('searchResult');
+            const keyword = input.value.trim();
+            
+            if(keyword === '堕骑推理馆') {
+                result.innerHTML = `
+                    <h4>堕骑推理馆</h4>
+                    <p>坐落于城市旧巷深处的沉浸式桌游推理馆，以中世纪骑士主题沉浸式装修闻名，主打强代入感的阿瓦隆对局与原创悬疑剧本杀。</p>
+                    <p><strong>营业时间：</strong>每日 11:00 - 次日 02:00</p>
+                    <p><strong>店内服务：</strong>提供精酿饮品、简餐与甜品，主营阿瓦隆、剧本杀、各类桌面卡牌游戏，配有专业DM全程带场。</p>
+                    <p><strong>官方网站：</strong><a href="https://waiting.com" target="_blank">waiting.com</a></p>
+                `;
+                result.classList.add('show');
+            } else if(keyword === '') {
+                result.classList.remove('show');
+            } else {
+                result.innerHTML = '<p style="text-align:center; color:#999;">未找到相关内容</p>';
+                result.classList.add('show');
+            }
+        }
+        // 回车搜索
+        document.getElementById('globalSearch').addEventListener('keydown', (e) => {
+            if(e.key === 'Enter') doSearch();
+        });
+        // 点击外部关闭搜索结果
+        document.addEventListener('click', (e) => {
+            const box = document.querySelector('.search-box');
+            if(!box.contains(e.target)) {
+                document.getElementById('searchResult').classList.remove('show');
+            }
+        });
+        // ========== 全局定时器管理（点击跳过用） ==========
+        let timeouts = [];
+        function safeTimeout(fn, delay) {
+            const id = setTimeout(() => {
+                fn();
+            }, delay);
+            timeouts.push(id);
+            return id;
+        }
+        function clearAllTimeouts() {
+            timeouts.forEach(id => clearTimeout(id));
+            timeouts = [];
+        }
+        // 点击聊天框跳过
+        document.getElementById('chatBox').addEventListener('click', () => {
+            if(gameState.phase === 'idle' || gameState.phase === 'end') return;
+            if(gameState.replySent) return;
+            window.skipNext = true;
+        });
+        // ========== 页面入口切换 ==========
+        function enterInnerPage(pageId) {
+            document.getElementById('welcomePage').style.display = 'none';
+            document.getElementById('mainHeader').classList.add('show');
+            document.getElementById('innerContainer').classList.add('show');
+            switchPage(pageId);
+        }
+        function switchPage(pageId) {
+            const navBtns = document.querySelectorAll('.nav button');
+            const pages = document.querySelectorAll('.page');
+            navBtns.forEach(b => b.classList.remove('active'));
+            pages.forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            document.querySelector(`.nav button[data-page="${pageId}"]`).classList.add('active');
+        }
+        document.querySelectorAll('.nav button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchPage(btn.dataset.page);
+            });
+        });
+        // ========== 特效函数 ==========
+        function triggerFullRedFlash() {
+            const flash = document.getElementById('redFlash');
+            flash.classList.remove('active');
+            void flash.offsetWidth;
+            flash.classList.add('active');
+            safeTimeout(() => {
+                flash.classList.remove('active');
+            }, 1500);
+        }
+        function showFullHelp() {
+            const help = document.getElementById('fullHelp');
+            help.classList.remove('active');
+            void help.offsetWidth;
+            help.classList.add('active');
+            safeTimeout(() => {
+                help.classList.remove('active');
+            }, 1250);
+        }
+        // ========== 线下工具逻辑 ==========
+        function showConfig(num) {
+            const res = document.getElementById('configResult');
+            const configs = {
+                5: '正义：梅林、派西维尔、忠臣 ×1 | 邪恶：莫甘娜、刺客',
+                6: '正义：梅林、派西维尔、忠臣 ×2 | 邪恶：莫甘娜、刺客',
+                7: '正义：梅林、派西维尔、忠臣 ×2 | 邪恶：莫甘娜、刺客、奥伯伦',
+                8: '正义：梅林、派西维尔、忠臣 ×3 | 邪恶：莫德雷德、莫甘娜、刺客',
+                9: '正义：梅林、派西维尔、忠臣 ×4 | 邪恶：莫德雷德、莫甘娜、刺客',
+                10: '正义：梅林、派西维尔、忠臣 ×4 | 邪恶：莫德雷德、莫甘娜、刺客、奥伯伦'
+            };
+            res.innerHTML = `<p><strong>${num}人标准建制：</strong></p><p>${configs[num]}</p>`;
+        }
+        function addVote(type) {
+            const box = document.getElementById('voteResult');
+            const p = document.createElement('p');
+            p.textContent = `• ${type}`;
+            box.appendChild(p);
+        }
+        function clearVote() {
+            document.getElementById('voteResult').innerHTML = '<p>表决记录列表：</p>';
+        }
+        function toggleTask(el) {
+            if (el.classList.contains('success')) {
+                el.classList.remove('success');
+                el.classList.add('fail');
+            } else if (el.classList.contains('fail')) {
+                el.classList.remove('fail');
+            } else {
+                el.classList.add('success');
+            }
+        }
+        function resetTask() {
+            document.querySelectorAll('.task-dot').forEach(dot => {
+                dot.classList.remove('success', 'fail');
+            });
+        }
+        // ========== 线上对局核心逻辑 ==========
+        // 身份：玩家=梅林，Theo=莫甘娜
+        const FIX_PLAYERS = [
+            {id:0, name:"Theo", role:"莫甘娜", isYou:false, dead:false},
+            {id:1, name:"Jiung", role:"派西维尔", isYou:false, dead:false},
+            {id:2, name:"Soul", role:"刺客", isYou:false, dead:false},
+            {id:3, name:"你", role:"梅林", isYou:true, dead:false},
+            {id:4, name:"Intak", role:"忠臣", isYou:false, dead:false},
+            {id:5, name:"Jongseob", role:"忠臣", isYou:false, dead:false}
+        ];
+        const FIXED_ROUNDS = [
+            { leader: 0, team: [0,1], result: "success", death: null },
+            { leader: 1, team: [0,2], result: "success", death: null },
+            { leader: 3, team: [0,1,4,2], result: "fail", death: 4 },
+            { leader: 5, team: [5,1,2,3], result: "fail", death: 1 },
+            { leader: 2, team: [0,5,3], result: "fail", death: null }
+        ];
+        let gameState = {
+            players: [],
+            currentRound: 0,
+            successCount: 0,
+            failCount: 0,
+            rejectCount: 0,
+            currentTeam: [],
+            phase: "idle",
+            isHorror: false,
+            replySent: false
+        };
+        function isEvil(role) {
+            return ["莫甘娜","刺客","莫德雷德","奥伯伦"].includes(role);
+        }
+       function startGame() {
+    clearAllTimeouts();
+    window.skipNext = false;
+    gameState = {
+        players: JSON.parse(JSON.stringify(FIX_PLAYERS)),
+        currentRound: 0,
+        successCount: 0,
+        failCount: 0,
+        rejectCount: 0,
+        currentTeam: [],
+        phase: "identity",
+        isHorror: false,
+        replySent: false
+    };
+    document.getElementById('chatInputBar').style.display = 'none';
+    document.getElementById('playerInput').value = '';
+    document.getElementById('startPanel').style.display = 'none';
+    document.getElementById('gameMain').style.display = 'block';
+    clearChat();
+    renderPlayerList();
+    addSystemMsg("迷雾笼罩阿瓦隆，六位圆桌骑士齐聚议事厅");
+    safeTimeout(() => {
+        addSystemMsg("徽章分发完毕，各自身份唯有己知");
+        safeTimeout(() => {
+            addSystemMsg("你是梅林，先知之眼能窥见所有暗影");
+            addSystemMsg("暗影行者：Theo、Soul，二人藏于骑士之中");
+            // 👇 修改了这里：不再点名Jiung是派西维尔，仅说明派西维尔的存在与能力
+            addSystemMsg("本局有派西维尔在场，他能看见两枚先知印记，却无法分辨你与莫甘娜的正邪");
+            safeTimeout(runRound, 2800);
+        }, 1800);
+    }, 1500);
+}
+        function runRound() {
+            if(gameState.currentRound >= FIXED_ROUNDS.length) {
+                safeTimeout(assassinScene, 1200);
+                return;
+            }
+            const round = FIXED_ROUNDS[gameState.currentRound];
+            gameState.currentLeader = round.leader;
+            gameState.phase = "discussion";
+            renderPlayerList();
+            addSystemMsg(`===== 第${gameState.currentRound+1}次征途 =====`);
+            addSystemMsg(`本轮领队：${gameState.players[round.leader].name}`);
+            addSystemMsg("议事厅内，众人依次陈词");
+            const speakOrder = [0,1,2,3,4,5].filter(id => !gameState.players[id].dead);
+            let idx = 0;
+            const nextSpeak = () => {
+                if(idx >= speakOrder.length) {
+                    safeTimeout(teamPhase, 1200);
+                    return;
+                }
+                const pid = speakOrder[idx];
+                const player = gameState.players[pid];
+                const delay = window.skipNext ? 0 : 1000;
+                window.skipNext = false;
+                safeTimeout(() => {
+                    const text = getRoleSpeak(player, gameState.currentRound);
+                    if(player.isYou) {
+                        addYouMsg(text);
+                    } else {
+                        addOtherMsg(player.name, text);
+                    }
+                    idx++;
+                    const nextDelay = window.skipNext ? 0 : 1700;
+                    window.skipNext = false;
+                    safeTimeout(nextSpeak, nextDelay);
+                }, delay);
+            };
+            const startDelay = window.skipNext ? 0 : 1200;
+            window.skipNext = false;
+            safeTimeout(nextSpeak, startDelay);
+        }
+        // 先知对跳发言
+        function getRoleSpeak(player, roundIdx) {
+            const r = player.role;
+            const pid = player.id;
+            // Theo - 莫甘娜：跳先知反咬
+            if(r === "莫甘娜") {
+                if(roundIdx === 0) return "真正的先知在此。我能明确告诉诸位，暗影已经混进来了，诸位若是信我，便随我开辟正道。";
+                if(roundIdx === 1) return "首战告捷，足以证明我的判断。倒是有人一直躲在后面煽风点火，我看他才是真正的暗影爪牙。";
+                if(roundIdx === 2) return "有人说我是暗影？可笑。我若是暗影，第一轮任务怎么可能成功？反倒是那位天天装先知的，你敢说你心里没鬼？";
+                if(roundIdx === 3) return "Intak的死是意外，也是有人故意为之。某些人借着先知的名头排除异己，真当大家看不出来吗？";
+                if(roundIdx === 4) return "事到如今，谁真谁假已经很清楚了。最后一轮，诸位擦亮眼睛，别被假先知骗了。";
+            }
+            // Jiung - 派西维尔：模糊视野，不分正邪
+            if(r === "派西维尔") {
+                if(roundIdx === 0) return "我能看到两枚先知印记，一真一假，但现在还分不出正邪。我暂不站队，只选忠勇之士完成征途。";
+                if(roundIdx === 1) return "第一轮队伍没出问题，但说明不了什么。两个跳先知的都有嫌疑，我再观察一轮，自有定论。";
+                if(roundIdx === 2) return "两位各执一词，都有道理，也都有破绽。Intak为人正直，带他我没意见，其他人我保留看法。";
+                if(roundIdx === 3) return "Intak就这么没了……现在说什么都太早。Jongseob领队我放心，但剩下两个先知，我还是不敢全信。";
+            }
+            // Soul - 刺客：站边Theo
+            if(r === "刺客") {
+                if(roundIdx === 0) return "我以骑士之名起誓，效忠亚瑟王。我站Theo这边，他的逻辑比对面清楚得多。";
+                if(roundIdx === 1) return "第二轮领队带我，我肯定能证明清白。倒是对面那位天天咬着我不放，我看他才是做贼心虚。";
+                if(roundIdx === 2) return "好笑，天天说我是暗影，证据呢？Theo说的才是真话，某些人就是怕被拆穿才急着跳脚。";
+                if(roundIdx === 3) return "Intak死了我也痛心！但不能因为我被怀疑就乱扣帽子吧？Jongseob你领队，我再出一次任务，再出事我认。";
+                if(roundIdx === 4) return "行了，都别吵了。Jiung也没了，最后一轮，任务结果见真章。";
+            }
+            // 你 - 梅林：点破双暗影
+            if(r === "梅林") {
+                if(roundIdx === 0) return "我才是真正的先知。Theo和Soul就是藏在我们中间的暗影，诸位万万不可信他的鬼话。";
+                if(roundIdx === 1) return "第一轮他不过是藏了身份，故意投成功骗取信任。Soul绝对不能带，带了必出问题。";
+                if(roundIdx === 2) return "Theo你装得再像也没用，你和Soul是什么身份，我心里一清二楚。这轮带你们进去，出事了谁负责？";
+                if(roundIdx === 3) return "Intak的死就是你们害的！暗影混在队伍里，才会出这种意外。Jiung，你现在该看清谁是真谁是假了。";
+                if(roundIdx === 4) return "Jiung也走了……剩下的人里，暗影还在。最后一轮，绝不能再让他们得逞。";
+            }
+            // Intak - 忠臣
+            if(pid === 4) {
+                if(roundIdx === 0) return "我Intak对天发誓，此生效忠亚瑟王。两位先知各有道理，我先观望，用行动证明自己。";
+                if(roundIdx === 1) return "首战告捷是好兆头。我虽然没视野，但我敢担保，我绝不会背叛圆桌。";
+                if(roundIdx === 2) return "领队信得过我，我就走这一趟。不管队里有没有坏人，我都会守住底线。";
+            }
+            // Jongseob - 忠臣
+            if(pid === 5) {
+                if(roundIdx === 0) return "正邪不两立，我早晚揪出那个藏着的杂碎。现在两边都跳先知，我谁都不信，只看行动。";
+                if(roundIdx === 1) return "第一轮顺不代表永远顺。暗影还在暗处，大家都擦亮眼睛，别被人卖了还帮着数钱。";
+                if(roundIdx === 2) return "Intak是我过命的兄弟，他不可能是坏人。人多未必是坏事，互相盯着反而安全。";
+                if(roundIdx === 3) return "Intak死了！这一轮我来领队，我他妈一定要揪出那个畜生，给我兄弟偿命！";
+                if(roundIdx === 4) return "Jiung也没了……就剩我们四个。Theo和Soul，我盯着你们俩呢。";
+            }
+            return "……";
+        }
+        function teamPhase() {
+            gameState.phase = "teamselect";
+            renderPlayerList();
+            const round = FIXED_ROUNDS[gameState.currentRound];
+            const leader = gameState.players[round.leader];
+            const teamNames = round.team.map(id => gameState.players[id].name).join("、");
+            addSystemMsg(`领队${leader.name}选出远征小队：${teamNames}`);
+            const delay = window.skipNext ? 0 : 1600;
+            window.skipNext = false;
+            safeTimeout(votePhase, delay);
+        }
+        function votePhase() {
+            gameState.phase = "vote";
+            renderPlayerList();
+            addSystemMsg("众人举手表决，是否同意这支小队出征");
+            const delay = window.skipNext ? 0 : 1500;
+            window.skipNext = false;
+            safeTimeout(() => {
+                addSystemMsg("表决通过，小队即刻整备出发");
+                const nextDelay = window.skipNext ? 0 : 1600;
+                window.skipNext = false;
+                safeTimeout(taskPhase, nextDelay);
+            }, delay);
+        }
+        function taskPhase() {
+            gameState.phase = "task";
+            renderPlayerList();
+            addSystemMsg("小队深入险境，秘密递交征途信物");
+            const delay = window.skipNext ? 0 : 2200;
+            window.skipNext = false;
+            safeTimeout(() => {
+                const round = FIXED_ROUNDS[gameState.currentRound];
+                const failCount = round.result === "fail" ? 1 : 0;
+                const teamSize = round.team.length;
+                addSystemMsg(`信物核验完毕：${teamSize - failCount}份纯净，${failCount}份污浊`);
+                if(round.result === "success") {
+                    gameState.successCount++;
+                    addSystemMsg("✅ 征途告捷，正义再添一分");
+                } else {
+                    gameState.failCount++;
+                    addSystemMsg("❌ 征途溃败，暗影得逞");
+                    
+                    if(round.death !== null) {
+                        const deathDelay = window.skipNext ? 0 : 900;
+                        window.skipNext = false;
+                        safeTimeout(() => {
+                            triggerFullRedFlash();
+                            addSystemMsg("系统错误 · 检测到异常数据波动");
+                            const deadDelay = window.skipNext ? 0 : 1100;
+                            window.skipNext = false;
+                            safeTimeout(() => {
+                                const deadPlayer = gameState.players[round.death];
+                                deadPlayer.dead = true;
+                                addSystemMsg(`${deadPlayer.name} 阵亡`);
+                                renderPlayerList();
+                            }, deadDelay);
+                        }, deathDelay);
+                    }
+                }
+                gameState.currentRound++;
+                renderPlayerList();
+                const nextDelay = window.skipNext ? 0 : 2800;
+                window.skipNext = false;
+                safeTimeout(runRound, nextDelay);
+            }, delay);
+        }
+        // 刺客刺杀剧情：目标是梅林（你），Jongseob挡刀同归于尽
+        function assassinScene() {
+            gameState.phase = "assassin";
+            renderPlayerList();
+            addSystemMsg("三次征途溃败，暗影势力占据上风");
+            addSystemMsg("Soul猛地掀翻圆桌，铠甲崩裂，淬毒匕首泛着寒光——他认出了你才是真正的梅林，直朝你心口刺来！");
+            const d1 = window.skipNext ? 0 : 1800;
+            window.skipNext = false;
+            safeTimeout(() => {
+                addSystemMsg("Jongseob嘶吼着纵身扑到你身前，用后背硬生生接下了这一刀");
+                const d2 = window.skipNext ? 0 : 1200;
+                window.skipNext = false;
+                safeTimeout(() => {
+                    addSystemMsg("金铁交鸣，鲜血喷溅，两人重重倒在血泊之中，再无声息");
+                    const d3 = window.skipNext ? 0 : 1100;
+                    window.skipNext = false;
+                    safeTimeout(() => {
+                        addSystemMsg("染血的匕首从Soul指间滑落，当啷一声落在你脚边");
+                        const d4 = window.skipNext ? 0 : 1100;
+                        window.skipNext = false;
+                        safeTimeout(() => {
+                            addSystemMsg("你鬼使神差地弯腰拾起，指尖触到一片冰冷粘稠的温热");
+                            const d5 = window.skipNext ? 0 : 1300;
+                            window.skipNext = false;
+                            safeTimeout(() => {
+                                triggerFullRedFlash();
+                                addSystemMsg("系统错误 · 剧情偏离预设轨迹");
+                                addSystemMsg("系统错误 · 强制终止程序中...");
+                                
+                                const d6 = window.skipNext ? 0 : 1200;
+                                window.skipNext = false;
+                                safeTimeout(() => {
+                                    showFullHelp();
+                                    
+                                    safeTimeout(() => {
+                                        // 恐怖剧情触发：改名Keeho
+                                        gameState.players[3].name = "Keeho";
+                                        gameState.players[3].isYou = false;
+                                        gameState.isHorror = true;
+                                        
+                                        gameState.players[2].dead = true;
+                                        gameState.players[5].dead = true;
+                                        renderPlayerList();
+                                        // Keeho台词序列
+                                        safeTimeout(() => {
+                                            addOtherMsg("Keeho", "你能看到我，对不对？");
+                                        }, 1000);
+                                        safeTimeout(() => {
+                                            addOtherMsg("Keeho", "我知道你能看见我。");
+                                        }, 2500);
+                                        safeTimeout(() => {
+                                            addOtherMsg("Keeho", "快回复我，好吗？");
+                                        }, 4000);
+                                        safeTimeout(() => {
+                                            addOtherMsg("Keeho", "不要再让我的朋友们死掉了。");
+                                        }, 5500);
+                                        // 显示输入框
+                                        safeTimeout(() => {
+                                            document.getElementById('chatInputBar').style.display = 'flex';
+                                            document.getElementById('playerInput').focus();
+                                        }, 6500);
+                                    }, 1800);
+                                }, d6);
+                            }, d5);
+                        }, d4);
+                    }, d3);
+                }, d2);
+            }, d1);
+        }
+        // 玩家发送回复
+        function sendPlayerReply() {
+            if(gameState.replySent) return;
+            const input = document.getElementById('playerInput');
+            const text = input.value.trim();
+            if(!text) return;
+            gameState.replySent = true;
+            addYouMsg(text);
+            input.value = '';
+            input.disabled = true;
+            safeTimeout(() => {
+                addOtherMsg("Keeho", "堕骑推理馆");
+            }, 1200);
+            
+            safeTimeout(() => {
+                addOtherMsg("Keeho", "去那里，拜托了。");
+            }, 2400);
+        }
+        // 回车发送
+        document.addEventListener('keydown', (e) => {
+            const input = document.getElementById('playerInput');
+            if(e.key === 'Enter' && document.activeElement === input) {
+                sendPlayerReply();
+            }
+        });
+        function renderPlayerList() {
+    const list = document.getElementById('playerList');
+    list.innerHTML = "";
+    gameState.players.forEach(p => {
+        const div = document.createElement('div');
+        let cls = "player-item";
+        if(p.isYou) cls += " you";
+        if(p.id === gameState.currentLeader && !p.dead) cls += " leader";
+        if(p.dead) cls += " dead";
+        div.className = cls;
+
+        // 👇 修改这里：身份显示逻辑
+        let roleText = "身份：未知";
+        if(p.dead || gameState.isHorror) {
+            roleText = `身份：${p.role}`;
+        } else if(p.isYou) {
+            roleText = `身份：${p.role}`;
+        } else if(isEvil(p.role)) {
+            // 梅林视野：可见所有暗影行者身份
+            roleText = `身份：${p.role}`;
+        }
+
+        div.innerHTML = `
+            <div class="player-name">${p.name}${p.id === gameState.currentLeader && !p.dead ? " 👑" : ""}</div>
+            <div class="player-role">${roleText}</div>
+        `;
+        list.appendChild(div);
+    });
+    document.getElementById('taskProgress').textContent = `${gameState.successCount}成 / ${gameState.failCount}败`;
+    const leader = gameState.players[gameState.currentLeader];
+    document.getElementById('leaderText').textContent = leader && !leader.dead ? leader.name : "-";
+    document.getElementById('rejectCount').textContent = gameState.rejectCount;
+    document.getElementById('phaseText').textContent = getPhaseName(gameState.phase);
+}
+        function getPhaseName(p) {
+            const map = {
+                identity: "身份确认",
+                discussion: "议事陈词",
+                teamselect: "领队选人",
+                vote: "全员表决",
+                task: "征途执行",
+                assassin: "刺客现身",
+                end: "程序终止"
+            };
+            return map[p] || p;
+        }
+        // ========== 聊天工具函数 ==========
+        function clearChat() {
+            document.getElementById('chatBox').innerHTML = '';
+        }
+        function addSystemMsg(text) {
+            const box = document.getElementById('chatBox');
+            const div = document.createElement('div');
+            div.className = 'chat-msg system';
+            div.textContent = text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+        function addYouMsg(text) {
+            const box = document.getElementById('chatBox');
+            const div = document.createElement('div');
+            div.className = 'chat-msg you';
+            div.innerHTML = `<div class="chat-name">你(梅林)</div>${text}`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+        function addOtherMsg(name, text) {
+            const box = document.getElementById('chatBox');
+            const div = document.createElement('div');
+            div.className = 'chat-msg other';
+            div.innerHTML = `<div class="chat-name">${name}</div>${text}`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // ========== 搜索页面跳转逻辑 ==========
+        // 升级搜索逻辑：输入关键词后跳转至独立结果页
+        const originalDoSearch = doSearch;
+        function doSearch() {
+            const input = document.getElementById('globalSearch');
+            const keyword = input.value.trim();
+            const resultPopup = document.getElementById('searchResult');
+            
+            if(keyword === '') {
+                resultPopup.classList.remove('show');
+                return;
+            }
+            // 跳转至独立搜索结果页
+            goToInnerPage('searchPage');
+            // 渲染搜索结果
+            renderSearchResult(keyword);
+            // 关闭下拉弹窗
+            resultPopup.classList.remove('show');
+        }
+
+        // 通用内页跳转函数，兼容原有导航逻辑
+        function goToInnerPage(pageId) {
+            // 退出欢迎页，显示顶部导航与内容容器
+            document.getElementById('welcomePage').style.display = 'none';
+            document.getElementById('mainHeader').classList.add('show');
+            document.getElementById('innerContainer').classList.add('show');
+            
+            // 切换页面激活状态
+            const allPages = document.querySelectorAll('.page');
+            allPages.forEach(page => page.classList.remove('active'));
+            // 清除导航按钮激活态
+            const navBtns = document.querySelectorAll('.nav button');
+            navBtns.forEach(btn => btn.classList.remove('active'));
+            
+            const targetPage = document.getElementById(pageId);
+            if(targetPage) {
+                targetPage.classList.add('active');
+            }
+        }
+
+        // 渲染搜索结果内容
+        function renderSearchResult(keyword) {
+            const contentBox = document.getElementById('searchPageContent');
+            if(keyword === '堕骑推理馆') {
+                contentBox.innerHTML = `
+                    <div class="search-entry" onclick="goToDuoqiDetail()">
+                        <h4>堕骑推理馆</h4>
+                        <p>城市旧巷深处的沉浸式桌游推理馆，主打阿瓦隆与原创剧本杀，古堡风格场景，专业DM全程带场。</p>
+                    </div>
+                `;
+            } else {
+                contentBox.innerHTML = `
+                    <div class="no-result">
+                        未找到与<strong>“${keyword}”</strong>相关的信息<br>
+                        <span style="font-size: 0.85rem; opacity: 0.7;">请尝试其他关键词</span>
+                    </div>
+                `;
+            }
+        }
+
+        // 跳转至堕骑推理馆详情页
+        function goToDuoqiDetail() {
+            goToInnerPage('duoqiPage');
+        }
+    </script>
+</body>
+</html>
